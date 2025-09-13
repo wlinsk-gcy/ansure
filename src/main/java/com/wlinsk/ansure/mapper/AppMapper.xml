@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wlinsk.ansure.mapper.AppMapper">
+
+    <resultMap id="BaseResultMap" type="com.wlinsk.ansure.model.entity.App">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="appId" column="app_id" jdbcType="VARCHAR"/>
+            <result property="appName" column="app_name" jdbcType="VARCHAR"/>
+            <result property="appDesc" column="app_desc" jdbcType="VARCHAR"/>
+            <result property="appIcon" column="app_icon" jdbcType="VARCHAR"/>
+            <result property="appType" column="app_type" jdbcType="TINYINT"
+                    javaType="com.wlinsk.ansure.basic.enums.AppTypeEnum"
+                    typeHandler="com.wlinsk.ansure.basic.handler.UniversalEnumHandler"/>
+            <result property="scoringStrategy" column="scoring_strategy" jdbcType="TINYINT"
+                    javaType="com.wlinsk.ansure.basic.enums.ScoringStrategyEnum"
+                    typeHandler="com.wlinsk.ansure.basic.handler.UniversalEnumHandler"/>
+            <result property="reviewStatus" column="review_status" jdbcType="INTEGER"
+                    javaType="com.wlinsk.ansure.basic.enums.ReviewStatusEnum"
+                    typeHandler="com.wlinsk.ansure.basic.handler.UniversalEnumHandler"/>
+            <result property="reviewMessage" column="review_message" jdbcType="VARCHAR"/>
+            <result property="reviewerId" column="reviewer_id" jdbcType="VARCHAR"/>
+            <result property="reviewTime" column="review_time" jdbcType="TIMESTAMP"/>
+            <result property="userId" column="user_id" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="version" column="version" jdbcType="INTEGER"/>
+            <result property="delState" column="del_state" jdbcType="INTEGER"
+                    javaType="com.wlinsk.ansure.basic.enums.DelStateEnum"
+                    typeHandler="com.wlinsk.ansure.basic.handler.UniversalEnumHandler"/>
+    </resultMap>
+    <resultMap id="QueryPageForClientResultMap" type="com.wlinsk.ansure.model.entity.App" extends="BaseResultMap">
+        <association property="userInfo" column="user_id" select="com.wlinsk.mapper.UserMapper.queryByUserId"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,app_id,app_name,
+        app_desc,app_icon,app_type,
+        scoring_strategy,review_status,review_message,
+        reviewer_id,review_time,user_id,
+        create_time,update_time,version,
+        del_state
+    </sql>
+    <sql id="Alias_Column_list">
+        app.id,app.app_id,app.app_name,
+        app.app_desc,app.app_icon,app.app_type,
+        app.scoring_strategy,app.review_status,app.review_message,
+        app.reviewer_id,app.review_time,app.user_id,
+        app.create_time,app.update_time,app.version,
+        app.del_state
+    </sql>
+    <update id="deleteByAppId">
+        update
+            tb_app
+        set
+            del_state = #{app.delState,jdbcType=INTEGER,javaType=com.wlinsk.ansure.basic.enums.DelStateEnum,
+            typeHandler=com.wlinsk.ansure.basic.handler.UniversalEnumHandler},
+            update_time = #{app.updateTime,jdbcType=TIMESTAMP},
+            version = #{app.version,jdbcType=INTEGER} + 1
+        where
+            app_id = #{app.appId,jdbcType=VARCHAR}
+          and del_state = 10
+          and version = #{app.version,jdbcType=INTEGER}
+    </update>
+    <update id="updateApp">
+        update
+            tb_app
+        set
+            <if test="app.appName != null and app.appName != ''">
+                app_name = #{app.appName,jdbcType=VARCHAR},
+            </if>
+            <if test="app.appDesc != null and app.appDesc != ''">
+                app_desc = #{app.appDesc,jdbcType=VARCHAR},
+            </if>
+            <if test="app.appIcon != null and app.appIcon != ''">
+                app_icon = #{app.appIcon,jdbcType=VARCHAR},
+            </if>
+            <if test="app.appType != null">
+                app_type = #{app.appType,jdbcType=INTEGER,javaType=com.wlinsk.ansure.basic.enums.AppTypeEnum,
+                typeHandler=com.wlinsk.ansure.basic.handler.UniversalEnumHandler},
+            </if>
+            <if test="app.scoringStrategy != null">
+                scoring_strategy = #{app.scoringStrategy,jdbcType=INTEGER,javaType=com.wlinsk.ansure.basic.enums.ScoringStrategyEnum,
+                typeHandler=com.wlinsk.ansure.basic.handler.UniversalEnumHandler},
+            </if>
+            <if test="app.reviewMessage != null and app.reviewMessage != ''">
+                review_message = #{app.reviewMessage,jdbcType=VARCHAR},
+            </if>
+            <if test="app.reviewStatus != null">
+                review_status = #{app.reviewStatus,jdbcType=INTEGER,javaType=com.wlinsk.ansure.basic.enums.ReviewStatusEnum,
+                typeHandler=com.wlinsk.ansure.basic.handler.UniversalEnumHandler},
+            </if>
+            <if test="app.reviewStatus != null and app.reviewStatus.code == 0">
+                review_status = 0,
+                review_message = null,
+            </if>
+            <if test="app.reviewerId != null and app.reviewerId != ''">
+                reviewer_id = #{app.reviewerId,jdbcType=VARCHAR},
+            </if>
+            <if test="app.reviewTime != null">
+                review_time = #{app.reviewTime,jdbcType=TIMESTAMP},
+            </if>
+            update_time = #{app.updateTime,jdbcType=TIMESTAMP},
+            version = #{app.version,jdbcType=INTEGER} + 1
+        where
+            app_id = #{app.appId,jdbcType=VARCHAR}
+        and del_state = 10
+        and version = #{app.version,jdbcType=INTEGER}
+    </update>
+    <select id="queryByAppId" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_app
+        where app_id = #{appId,jdbcType=VARCHAR} and del_state = 10
+    </select>
+    <select id="queryPage" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_app
+        where del_state = 10
+        <if test="appName != null and appName != ''">
+            and app_name like concat('%',#{appName,jdbcType=VARCHAR},'%')
+        </if>
+        <if test="appId != null and appId != ''">
+            and app_id = #{appId,jdbcType=VARCHAR}
+        </if>
+        group by app_id
+        order by create_time desc
+    </select>
+    <select id="queryPageForClient" resultMap="BaseResultMap">
+        select <include refid="Alias_Column_list"/> from tb_app app
+        left join tb_user u on u.user_id = app.user_id
+        where app.del_state = 10 and app.review_status = 1
+          and u.user_role in ('admin','user') and u.del_state = 10
+        <if test="context != null and context != ''">
+            and (
+            app.app_name like concat('%',#{context,jdbcType=VARCHAR},'%')
+                or app.app_id = #{context,jdbcType=VARCHAR}
+                or app.app_desc like concat('%',#{context,jdbcType=VARCHAR},'%')
+            )
+        </if>
+        group by app.app_id
+        order by app.create_time desc
+    </select>
+    <select id="queryMyPageForClient" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_app
+        where del_state = 10 and user_id = #{userId,jdbcType=VARCHAR}
+        <if test="appName != null and appName != ''">
+            and app_name like concat('%',#{appName,jdbcType=VARCHAR},'%')
+        </if>
+        <if test="appId != null and appId != ''">
+            and app_id = #{appId,jdbcType=VARCHAR}
+        </if>
+        group by app_id
+        order by create_time desc
+    </select>
+    <select id="queryFiveRecords" resultMap="BaseResultMap">
+        select <include refid="Alias_Column_list"/> from tb_app app
+        left join tb_user u on u.user_id = app.user_id
+        where app.del_state = 10 and app.review_status = 1
+        and u.user_role in ('admin','user') and u.del_state = 10
+        <if test="appName != null and appName != ''">
+            and app.app_name like concat('%',#{appName,jdbcType=VARCHAR},'%')
+        </if>
+        group by app.app_id
+        order by app.create_time desc
+        limit 3
+    </select>
+    <select id="queryLast" resultMap="BaseResultMap">
+        select <include refid="Alias_Column_list"/> from tb_app app
+        left join tb_user u on u.user_id = app.user_id
+        where app.del_state = 10 and app.review_status = 1
+        and u.user_role in ('admin','user') and u.del_state = 10
+        group by app.app_id
+        order by app.create_time desc
+        limit 1
+    </select>
+</mapper>

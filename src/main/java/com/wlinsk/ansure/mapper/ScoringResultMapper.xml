@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wlinsk.ansure.mapper.ScoringResultMapper">
+
+    <resultMap id="BaseResultMap" type="com.wlinsk.ansure.model.entity.ScoringResult">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="resultId" column="result_id" jdbcType="VARCHAR"/>
+            <result property="resultName" column="result_name" jdbcType="VARCHAR"/>
+            <result property="resultDesc" column="result_desc" jdbcType="VARCHAR"/>
+            <result property="resultPicture" column="result_picture" jdbcType="VARCHAR"/>
+            <result property="resultProp" column="result_prop" jdbcType="VARCHAR" javaType="java.util.List" typeHandler="com.wlinsk.ansure.basic.handler.ListToJsonHandler"/>
+            <result property="resultScoreRange" column="result_score_range" jdbcType="INTEGER"/>
+            <result property="appId" column="app_id" jdbcType="VARCHAR"/>
+            <result property="userId" column="user_id" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="version" column="version" jdbcType="INTEGER"/>
+            <result property="delState" column="del_state" jdbcType="INTEGER"
+                    javaType="com.wlinsk.ansure.basic.enums.DelStateEnum"
+                    typeHandler="com.wlinsk.ansure.basic.handler.UniversalEnumHandler"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,result_id,result_name,
+        result_desc,result_picture,result_prop,
+        result_score_range,app_id,user_id,
+        create_time,update_time,version,
+        del_state
+    </sql>
+    <update id="updateScoringResult">
+        update tb_scoring_result
+        set
+            result_name = #{scoringResult.resultName,jdbcType=VARCHAR},
+            result_desc = #{scoringResult.resultDesc,jdbcType=VARCHAR},
+            result_picture = #{scoringResult.resultPicture,jdbcType=VARCHAR},
+            result_prop = #{scoringResult.resultProp,jdbcType=VARCHAR,javaType=java.util.List,typeHandler=com.wlinsk.ansure.basic.handler.ListToJsonHandler},
+            result_score_range = #{scoringResult.resultScoreRange,jdbcType=INTEGER},
+            update_time = #{scoringResult.updateTime,jdbcType=TIMESTAMP},
+            version = #{scoringResult.version,jdbcType=INTEGER}
+        where app_id = #{scoringResult.appId,jdbcType=VARCHAR}
+          and result_id = #{scoringResult.resultId,jdbcType=VARCHAR}
+          and del_state = 10
+    </update>
+    <update id="deleteScoringResult">
+        update tb_scoring_result
+        set
+            version = #{scoringResult.version,jdbcType=INTEGER} + 1,
+            update_time = #{scoringResult.updateTime,jdbcType=TIMESTAMP},
+            del_state = #{scoringResult.delState,jdbcType=INTEGER,javaType=com.wlinsk.ansure.basic.enums.DelStateEnum,
+            typeHandler=com.wlinsk.ansure.basic.handler.UniversalEnumHandler}
+        where result_id = #{scoringResult.resultId,jdbcType=VARCHAR} and del_state = 10
+    </update>
+    <select id="queryById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_scoring_result
+        where result_id = #{resultId,jdbcType=VARCHAR} and del_state = 10
+    </select>
+    <select id="queryPage" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_scoring_result
+        where del_state = 10 and app_id = #{appId,jdbcType=VARCHAR}
+        <if test="resultName != null and resultName != ''">
+            and result_name like concat('%',#{resultName,jdbcType=VARCHAR},'%')
+        </if>
+        <if test="resultDesc != null and resultDesc != ''">
+            and result_desc like concat('%',#{resultDesc,jdbcType=VARCHAR},'%')
+        </if>
+        group by result_id
+        order by create_time desc
+    </select>
+    <select id="queryByAppIdOrderByScoreRange" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/> from tb_scoring_result
+        where del_state = 10 and app_id = #{appId,jdbcType=VARCHAR}
+        group by result_id
+        order by create_time,result_score_range desc
+    </select>
+</mapper>
