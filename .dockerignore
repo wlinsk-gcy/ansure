@@ -1,0 +1,9 @@
+.git
+.idea
+target
+docs
+logs
+wlinsk.log.path_IS_UNDEFINED
+README.md
+CLAUDE.md
+*.iml

@@ -38,3 +38,5 @@ build/
 
 CLAUDE.md
 /wlinsk.log.path_IS_UNDEFINED/
+
+*.sh
