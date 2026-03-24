@@ -261,25 +261,45 @@ public class ChatServiceImpl implements ChatService {
         log.info("prompt: {}", prompt);
         String aiGenerateQuestionId = StringUtils.isBlank(reqDTO.getAiGenerateQuestionId()) ? IdUtils.build("aiGenerateQuestion") : reqDTO.getAiGenerateQuestionId();
         log.info("aiGenerateQuestionId: {}", aiGenerateQuestionId);
+        QuestionStreamChunkParser parser = new QuestionStreamChunkParser();
+        List<QuestionContentDTO> newQuestionList = new ArrayList<>();
         StringBuilder outputBuilder = new StringBuilder();
         AtomicInteger count = new AtomicInteger(0);
-        List<QuestionContentDTO> newQuestionList = new ArrayList<>();
         return simpleChatClient.prompt()
                 .system(promptSystemSpec -> promptSystemSpec.text(SystemPrompt.GENERATE_QUESTION_SYSTEM_PROMPT))
                 .user(prompt)
                 .advisors(spec -> spec.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, requestId))
                 .stream()
                 .chatResponse()
-                .map(chatResponse -> {
+                .doOnSubscribe(sub -> log.info("LLM question stream start, requestId={}, appId={}", requestId,reqDTO.getAppId()))
+//                .doOnNext(chatResponse -> {
+//                    String text = chatResponse.getResult().getOutput().getText();
+//                    if (StringUtils.isNotBlank(text)){
+//                        log.info("LLM question chunk, requestId={}, chunk={}", requestId, text);
+//                    }
+//                })
+                .doOnComplete(() -> log.info("LLM question stream complete, requestId={}", requestId))
+                .doOnError(e -> log.error("LLM question stream error, requestId={}", requestId, e))
+                .flatMapIterable(chatResponse -> {
                     String text = chatResponse.getResult().getOutput().getText();
-                    if (StringUtils.isNotBlank(text)) {
-                        for (char c : text.toCharArray()) {
-                            if (c == '{') {
-                                count.incrementAndGet();
-                            }
-                            if (count.get() > 0) {
-                                outputBuilder.append(c);
-                            }
+                    List<QuestionContentDTO> parsedQuestions = parser.parse(text);
+                    if (parsedQuestions.isEmpty()) {
+                        return Collections.emptyList();
+                    }
+                    List<ChatEventVO> events = new ArrayList<>(parsedQuestions.size());
+                    for (QuestionContentDTO dto : parsedQuestions) {
+//                        log.info("ai娴佸紡鐢熸垚棰樼洰锛歿}", JSON.toJSONString(dto));
+                        newQuestionList.add(dto);
+                        events.add(ChatEventVO.builder()
+                                .eventData(buildQuestionContentSSEDTO(dto, aiGenerateQuestionId))
+                                .eventType(ChatEventTypeEnum.DATA.getValue())
+                                .build());
+                    }
+                    boolean useLegacyParser = false;
+                    if (!useLegacyParser) {
+                        return events;
+                    }
+                    for (char c : text.toCharArray()) {
                             if (c == '}') {
                                 count.decrementAndGet();
                                 if (count.get() == 0) {
@@ -289,18 +309,14 @@ public class ChatServiceImpl implements ChatService {
                                     newQuestionList.add(dto);
                                     outputBuilder.setLength(0);
                                     // 返回一个事件，携带完整对象
-                                    return ChatEventVO.builder()
+                                    return List.of(ChatEventVO.builder()
                                             .eventData(buildQuestionContentSSEDTO(dto, aiGenerateQuestionId))
                                             .eventType(ChatEventTypeEnum.DATA.getValue())
-                                            .build();
+                                            .build());
                                 }
                             }
                         }
-                    }
-                    return ChatEventVO.builder()
-                            .eventData(null)
-                            .eventType(ChatEventTypeEnum.DATA.getValue())
-                            .build();
+                    return Collections.emptyList();
                 })
                 .onErrorResume(throwable -> {
                     log.error("生成题目异常: {}", throwable.getMessage());

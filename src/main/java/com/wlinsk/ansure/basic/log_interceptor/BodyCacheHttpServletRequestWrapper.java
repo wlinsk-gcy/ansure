@@ -47,12 +47,16 @@ public class BodyCacheHttpServletRequestWrapper extends HttpServletRequestWrappe
 
         @Override
         public boolean isFinished() {
-            return true;
+            try {
+                return inputStream.available() == 0;
+            } catch (IOException e) {
+                return true;
+            }
         }
 
         @Override
         public boolean isReady() {
-            return false;
+            return true;
         }
 
         @Override
